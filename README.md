@@ -31,4 +31,4 @@ contract_obj = new_contract(contract_address)
 result = read_method(contract_obj, 'methodName', arg1, arg2)
 
 # Отправка транзакции к контракту
-tx_hash = send_transaction(contract_obj, wallet_address, private_key, 'methodName', arg1, arg2)```
+tx_hash = send_transaction(contract_obj, wallet_address, private_key, 'methodName', arg1, arg2)
