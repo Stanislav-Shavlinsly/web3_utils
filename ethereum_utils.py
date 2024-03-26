@@ -1,42 +1,22 @@
 import requests
 import json
-from web3 import Web3, contract
+from web3 import Web3
 from web3.contract import Contract
 from web3.middleware import geth_poa_middleware
+from web3.exceptions import MismatchedABI
 
-# Определение констант для различных провайдеров и адресов ABI
-PROVIDERS = {
-    'ethereum_holesky': 'https://ethereum-holesky.blockpi.network/v1/rpc/public',
-    'ethereum_goerli': 'https://sepolia.infura.io/v3/0d6408dc0e754ca884f3b60a54de3228',
-    'ethereum_sepolia': 'https://sepolia.infura.io/v3/0d6408dc0e754ca884f3b60a54de3228',
-    'linea_goerli': 'https://linea-goerli.infura.io/v3/0d6408dc0e754ca884f3b60a54de3228',
-    'polygon_amoy': 'https://polygon-amoy.infura.io/v3/0d6408dc0e754ca884f3b60a54de3228',
-    'polygon_mumbai': 'https://polygon-mumbai.infura.io/v3/0d6408dc0e754ca884f3b60a54de3228',
-    'arbitrum_sepolia': 'https://arbitrum-sepolia.infura.io/v3/0d6408dc0e754ca884f3b60a54de3228',
-    'bsc_testnet': 'https://bsc-testnet.nodereal.io/v1/8f87841ec0744b58800f17e1832bee38'
-}
+from config import ethereum_holesky_config, ethereum_goerli_config, ethereum_sepolia_config, bsc_testnet_config
 
-URL_ABIS = {
-    'ethereum_holesky': 'https://api-holesky.etherscan.io/api?module=contract&action=getabi&address=',
-    'ethereum_goerli': 'https://api-goerli.etherscan.io/api?module=contract&action=getabi&address=',
-    'ethereum_sepolia': 'https://api-sepolia.etherscan.io/api?module=contract&action=getabi&address=',
-    'bsc_testnet': 'https://api-testnet.bscscan.com/api?module=contract&action=getabi&address='
-}
+contract_config = ethereum_sepolia_config
 
-CHAIN_IDS = {
-    'ethereum_holesky': 17000,
-    'ethereum_goerli': 5,
-    'ethereum_sepolia': 11155111,
-    'bsc_testnet': 97
-}
 
-# Используемый провайдер по умолчанию
-PROVIDER = PROVIDERS['ethereum_holesky']
-URL_ABI = URL_ABIS['ethereum_holesky']
-CHAIN_ID = CHAIN_IDS['ethereum_holesky']
+PROVIDER = contract_config.provider
+URL_ABI = contract_config.url_abi
+CHAIN_ID = contract_config.chain_id
 
 web3 = Web3(Web3.HTTPProvider(PROVIDER))
 web3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
 
 def new_contract(contract_address: str) -> Contract:
     """
@@ -58,6 +38,7 @@ def new_contract(contract_address: str) -> Contract:
     contract_obj = web3.eth.contract(address=contract_address, abi=abi)
     return contract_obj
 
+
 def read_method(contract_obj: Contract, method_name: str, *args) -> str | int | bool:
     """
     Выполняет чтение метода контракта.
@@ -73,7 +54,9 @@ def read_method(contract_obj: Contract, method_name: str, *args) -> str | int | 
     method = contract_obj.functions[method_name](*args)
     return method.call()
 
-def send_transaction(contract_obj: Contract, wallet_address: str, private_key: str, method_name: str, *args) -> str | bool:
+
+def send_transaction(contract_obj: Contract, wallet_address: str, private_key: str, method_name: str,
+                     *args) -> str | bool:
     """
     Отправляет транзакцию к контракту.
 
@@ -112,3 +95,91 @@ def send_transaction(contract_obj: Contract, wallet_address: str, private_key: s
     except Exception as e:
         print(f"Ошибка при отправке транзакции: {e}")
         return False
+
+
+def list_events(contract_obj: Contract):
+    """
+    Выводит список всех событий контракта.
+
+    Args:
+    contract_obj (Contract): Объект контракта.
+    """
+    events = contract_obj.events
+
+    all_events = [name for name in dir(events) if not name.startswith('_') and not name == 'abi']
+
+    return all_events
+
+
+def decode_transaction_logs(contract_obj: Contract, tx_hash: str, event_names=None) -> list:
+    """
+    Расшифровывает логи транзакции и возвращает их в порядке logIndex.
+
+    Args:
+    contract_obj (Contract): Объект контракта.
+    tx_hash (str): Хеш транзакции.
+    event_names (list, optional): Список названий событий для расшифровки.
+                                  Если не указан, будет получен список всех событий контракта.
+
+    Returns:
+    list: Список декодированных транзакций в порядке logIndex.
+    """
+    if event_names is None:
+        event_names = list_events(contract_obj)
+
+    tx_receipt = web3.eth.getTransactionReceipt(tx_hash)
+
+    if tx_receipt is None:
+        print("Транзакция не найдена")
+        return []
+
+    decoded_logs = []
+    for log in tx_receipt['logs']:
+        for event_name in event_names:
+            try:
+                event = getattr(contract_obj.events, event_name)()
+                decoded_log = event.processLog(log)
+                decoded_logs.append(decoded_log)
+            except MismatchedABI:
+                pass
+
+    decoded_logs.sort(key=lambda x: x['logIndex'])
+
+    return decoded_logs
+
+
+def get_block_info(block_number: int) -> dict | None:
+    """
+    Получает информацию о блоке по его номеру.
+
+    Args:
+    block_number (int): Номер блока.
+
+    Returns:
+    dict | None: Информация о блоке в виде словаря. Возвращает None в случае ошибки.
+    """
+    try:
+        block = web3.eth.getBlock(block_number)
+        return block
+    except Exception as e:
+        print("Произошла ошибка:", e)
+        return None
+
+
+def get_transaction_info(tx_hash: str) -> dict | None:
+    """
+    Получает информацию о транзакции по её хешу.
+
+    Args:
+    tx_hash (str): Хеш транзакции.
+
+    Returns:
+    dict | None: Информация о транзакции в виде словаря. Возвращает None в случае ошибки.
+    """
+    try:
+        tx = web3.eth.getTransaction(tx_hash)
+        return tx
+    except Exception as e:
+        print("Произошла ошибка:", e)
+        return None
+
