@@ -7,7 +7,7 @@ class ContractConfig:
         url_abi (str): URL-адрес для получения ABI контракта.
         chain_id (int): Идентификатор цепочки блокчейна (chain ID) для сети Ethereum.
     """
-    def __init__(self, provider, url_abi, chain_id):
+    def __init__(self, provider, chain_id, url_abi=None, abi=None):
         """
         Инициализирует объект класса ContractConfig.
 
@@ -19,7 +19,6 @@ class ContractConfig:
         self.provider = provider
         self.url_abi = url_abi
         self.chain_id = chain_id
-
 
 ethereum_holesky_config = ContractConfig(
     provider='https://ethereum-holesky.blockpi.network/v1/rpc/public',
@@ -43,4 +42,9 @@ bsc_testnet_config = ContractConfig(
     provider='https://bsc-testnet.nodereal.io/v1/8f87841ec0744b58800f17e1832bee38',
     url_abi='https://api-testnet.bscscan.com/api?module=contract&action=getabi&address=',
     chain_id=97
+)
+
+shibarium_puppy_config = ContractConfig(
+    provider='https://puppynet.shibrpc.com',
+    chain_id=157
 )

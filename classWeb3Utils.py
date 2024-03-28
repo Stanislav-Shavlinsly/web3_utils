@@ -26,9 +26,10 @@ class Web3Utils:
         contract_address (str): Адрес контракта в блокчейне.
     """
 
-    def __init__(self, contract_config, contract_address):
+    def __init__(self, contract_config, contract_address, abi=None):
         self.provider = contract_config.provider
         self.url_abi = contract_config.url_abi
+        self.abi = abi
         self.chain_id = contract_config.chain_id
         self.web3 = Web3(Web3.HTTPProvider(self.provider))
         self.web3.middleware_onion.inject(geth_poa_middleware, layer=0)
@@ -44,10 +45,13 @@ class Web3Utils:
         Returns:
             Contract: Объект контракта для взаимодействия.
         """
-        url = self.url_abi + contract_address
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers).text
-        abi = json.loads(response)['result']
+        if self.url_abi:
+            url = self.url_abi + contract_address
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers).text
+            abi = json.loads(response)['result']
+        else:
+            abi = self.abi
         return self.web3.eth.contract(address=contract_address, abi=abi)
 
     def read_method(self, method_name: str, *args) -> str | int | bool:
