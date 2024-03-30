@@ -1,9 +1,9 @@
 import requests
 import json
-from web3 import Web3
+from web3 import Web3, exceptions
 from web3.contract import Contract
 from web3.middleware import geth_poa_middleware
-from web3.exceptions import MismatchedABI
+from web3.exceptions import MismatchedABI, TransactionNotFound
 
 from config import ethereum_holesky_config, ethereum_goerli_config, ethereum_sepolia_config, bsc_testnet_config
 
@@ -12,7 +12,8 @@ class Web3Utils:
     """
     Обеспечивает удобный интерфейс для взаимодействия с Ethereum-совместимыми блокчейнами, позволяя создавать
     и взаимодействовать с объектами контрактов, отправлять транзакции, читать методы и события контрактов,
-    а также получать информацию о блоках и транзакциях.
+    а также получать информацию о блоках и транзакциях. Позволяет также получать URL для отслеживания
+    транзакций в блокчейн-эксплорере и загружать ABI из локального файла.
 
     Атрибуты:
         provider (str): URL провайдера для подключения к блокчейну.
@@ -20,38 +21,50 @@ class Web3Utils:
         chain_id (int): Идентификатор цепочки для выполнения транзакций.
         web3 (Web3): Экземпляр Web3 для взаимодействия с блокчейном.
         contract_obj (Contract): Объект контракта для взаимодействия.
+        url_tx_explorer (str, optional): URL-адрес проводника транзакций, может быть None.
+        path_abi (str, optional): Путь к локальному файлу с ABI контракта, может быть None.
 
     Аргументы:
         contract_config: Конфигурация подключения к блокчейну и контракту.
         contract_address (str): Адрес контракта в блокчейне.
+        abi (list, optional): ABI контракта. Если не указан, ABI будет загружено через HTTP-запрос или из локального файла.
+        path_abi (str, optional): Путь к локальному файлу с ABI контракта.
     """
 
-    def __init__(self, contract_config, contract_address, abi=None):
+    def __init__(self, contract_config, contract_address, abi=None, path_abi=None):
         self.provider = contract_config.provider
         self.url_abi = contract_config.url_abi
         self.abi = abi
+        self.path_abi = path_abi
         self.chain_id = contract_config.chain_id
         self.web3 = Web3(Web3.HTTPProvider(self.provider))
         self.web3.middleware_onion.inject(geth_poa_middleware, layer=0)
-        self.contract_obj = Web3Utils.new_contract(self, contract_address)
+        self.contract_obj = self.new_contract(contract_address)
+        self.url_tx_explorer = contract_config.url_tx_explorer
 
     def new_contract(self, contract_address: str) -> Contract:
         """
-        Создает и возвращает объект контракта по указанному адресу, используя ABI, полученное через HTTP-запрос.
+        Создает и возвращает объект контракта по указанному адресу, используя ABI.
+        Если ABI не было предоставлено в конструкторе, оно получается через HTTP-запрос
+        к указанному URL-адресу ABI или из локального файла, если был предоставлен путь к файлу.
 
         Args:
             contract_address (str): Адрес контракта в сети.
 
         Returns:
-            Contract: Объект контракта для взаимодействия.
+            Contract: Объект контракта для взаимодействия с ним.
         """
-        if self.url_abi:
+        if self.path_abi:
+            with open(self.path_abi, 'r') as abi_file:
+                abi = json.load(abi_file)
+        elif self.url_abi:
             url = self.url_abi + contract_address
             headers = {'User-Agent': 'Mozilla/5.0'}
             response = requests.get(url, headers=headers).text
             abi = json.loads(response)['result']
         else:
             abi = self.abi
+
         return self.web3.eth.contract(address=contract_address, abi=abi)
 
     def read_method(self, method_name: str, *args) -> str | int | bool:
@@ -120,6 +133,18 @@ class Web3Utils:
             print(f"Ошибка при отправке транзакции: {e}")
             return False
 
+    def wait_transaction_receipt(self, tx_hash):
+        """
+        Ожидает подтверждения транзакции.
+
+        Параметры:
+            tx_hash (str): Хеш транзакции для ожидания.
+
+        Возвращает:
+            TransactionReceipt: Получает квитанцию транзакции после ее подтверждения.
+        """
+        return self.web3.eth.waitForTransactionReceipt(tx_hash)
+
     def list_events(self):
         """
         Возвращает список имен всех событий, определенных в контракте.
@@ -136,6 +161,8 @@ class Web3Utils:
     def decode_transaction_logs(self, tx_hash: str, event_names=None) -> list:
         """
         Расшифровывает и возвращает логи указанной транзакции, фильтруя по заданным событиям.
+        В случае отсутствия транзакции, функция ожидает ее появления с использованием метода
+        wait_transaction_receipt.
 
         Args:
             tx_hash (str): Хеш транзакции для анализа логов.
@@ -148,10 +175,17 @@ class Web3Utils:
         if event_names is None:
             event_names = self.list_events()
 
-        tx_receipt = self.web3.eth.getTransactionReceipt(tx_hash)
+        try:
+            tx_receipt = self.web3.eth.getTransactionReceipt(tx_hash)
+        except TransactionNotFound:
+            print("Ожидание появления транзакции...")
+            tx_receipt = self.wait_transaction_receipt(tx_hash)
+        except Exception as e:
+            print(f"Произошла ошибка при получении квитанции транзакции: {e}")
+            return []
 
         if tx_receipt is None:
-            print("Транзакция не найдена")
+            print("Транзакция не найдена после ожидания.")
             return []
 
         decoded_logs = []
@@ -162,7 +196,7 @@ class Web3Utils:
                     decoded_log = event.processLog(log)
                     decoded_logs.append(decoded_log)
                 except MismatchedABI:
-                    pass
+                    continue
 
         decoded_logs.sort(key=lambda x: x['logIndex'])
 
@@ -187,7 +221,8 @@ class Web3Utils:
 
     def get_transaction_info(self, tx_hash: str) -> dict | None:
         """
-        Получает и возвращает информацию о транзакции по ее хешу.
+        Получает и возвращает информацию о транзакции по ее хешу. В случае отсутствия транзакции,
+        функция ожидает ее появления с использованием метода wait_transaction_receipt.
 
         Args:
             tx_hash (str): Хеш транзакции для получения информации.
@@ -196,28 +231,23 @@ class Web3Utils:
             dict | None: Информация о транзакции или None в случае ошибки.
         """
         try:
-            tx = self.web3.eth.getTransaction(tx_hash)
-            return tx
+            return self.web3.eth.getTransaction(tx_hash)
+        except TransactionNotFound:
+            print("Ожидание появления транзакции...")
+            self.wait_transaction_receipt(tx_hash)
+            return self.web3.eth.getTransaction(tx_hash)
         except Exception as e:
-            print("Произошла ошибка:", e)
+            print(f"Произошла ошибка при получении информации о транзакции: {e}")
             return None
 
+    def give_url_tx(self, tx_hash: str) -> str:
+        """
+        Генерирует полный URL для отслеживания транзакции в блокчейн-эксплорере на основе переданного хеша транзакции.
 
-class UserWallet:
-    """
-    Представляет кошелек пользователя, содержащий публичный и приватный ключи для взаимодействия с блокчейном.
+        Args:
+            tx_hash (str): Хеш транзакции, для которой требуется получить URL.
 
-    Атрибуты:
-        username (str, optional): Имя пользователя, ассоциированное с кошельком.
-        public_key (str): Публичный ключ кошелька, используемый как адрес в блокчейне.
-        private_key (str): Приватный ключ кошелька, используемый для подписи транзакций.
-
-    Аргументы:
-        public_key (str): Публичный ключ кошелька.
-        private_key (str): Приватный ключ кошелька.
-        username (str, optional): Имя пользователя.
-    """
-    def __init__(self, public_key: str, private_key: str, username=None):
-        self.username = username
-        self.public_key = public_key
-        self.private_key = private_key
+        Returns:
+            str: Полный URL-адрес для просмотра транзакции в блокчейн-эксплорере.
+        """
+        return self.url_tx_explorer + tx_hash if self.url_tx_explorer else None
