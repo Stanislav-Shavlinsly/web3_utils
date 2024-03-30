@@ -20,18 +20,18 @@ class Web3Utils:
         url_abi (str): Базовый URL для доступа к ABI контракта.
         chain_id (int): Идентификатор цепочки для выполнения транзакций.
         web3 (Web3): Экземпляр Web3 для взаимодействия с блокчейном.
-        contract_obj (Contract): Объект контракта для взаимодействия.
+        contract_obj (Contract, optional): Объект контракта для взаимодействия, может быть None.
         url_tx_explorer (str, optional): URL-адрес проводника транзакций, может быть None.
         path_abi (str, optional): Путь к локальному файлу с ABI контракта, может быть None.
 
     Аргументы:
         contract_config: Конфигурация подключения к блокчейну и контракту.
-        contract_address (str): Адрес контракта в блокчейне.
+        contract_address (str, optional): Адрес контракта в блокчейне. Может быть None.
         abi (list, optional): ABI контракта. Если не указан, ABI будет загружено через HTTP-запрос или из локального файла.
         path_abi (str, optional): Путь к локальному файлу с ABI контракта.
     """
 
-    def __init__(self, contract_config, contract_address, abi=None, path_abi=None):
+    def __init__(self, contract_config, contract_address=None, abi=None, path_abi=None):
         self.provider = contract_config.provider
         self.url_abi = contract_config.url_abi
         self.abi = abi
@@ -39,7 +39,7 @@ class Web3Utils:
         self.chain_id = contract_config.chain_id
         self.web3 = Web3(Web3.HTTPProvider(self.provider))
         self.web3.middleware_onion.inject(geth_poa_middleware, layer=0)
-        self.contract_obj = self.new_contract(contract_address)
+        self.contract_obj = None if contract_address is None else self.new_contract(contract_address)
         self.url_tx_explorer = contract_config.url_tx_explorer
 
     def new_contract(self, contract_address: str) -> Contract:
@@ -82,13 +82,14 @@ class Web3Utils:
         return method.call()
 
     def send_transaction(self, method_name: str,
-                         *args, user_wallet=None, wallet_address=None, private_key=None) -> str | bool:
+                         *args, user_wallet=None, wallet_address=None, private_key=None, value=0) -> str | bool:
         """
         Отправляет транзакцию для вызова метода контракта, используя кошелек и приватный ключ. Параметры кошелька и ключа
         могут быть предоставлены либо через объект user_wallet класса UserWallet, либо через прямое указание
         wallet_address и private_key.
 
         Args:
+            value (int): Количество нативной валюты в транзакции
             method_name (str): Название метода контракта для вызова.
             *args: Аргументы метода.
             user_wallet (UserWallet, optional): Объект кошелька пользователя.
@@ -115,13 +116,60 @@ class Web3Utils:
 
         transaction = {
             'to': self.contract_obj.address,
-            'value': 0,
+            'value': value,
             'gas': 400000,
             'gasPrice': self.web3.eth.gasPrice,
             'nonce': self.web3.eth.getTransactionCount(wallet_address),
             'chainId': self.chain_id,
         }
         transaction['data'] = method.buildTransaction({'from': wallet_address})['data']
+
+        signed_transaction = self.web3.eth.account.sign_transaction(transaction, private_key)
+
+        try:
+            tx_hash = self.web3.eth.sendRawTransaction(signed_transaction.rawTransaction)
+            print(f"Транзакция успешно отправлена. Хэш транзакции: {tx_hash.hex()}")
+            return tx_hash.hex()
+        except Exception as e:
+            print(f"Ошибка при отправке транзакции: {e}")
+            return False
+
+    def send_native_currency(self, to_address: str, value: int, user_wallet=None, private_key=None) -> str | bool:
+        """
+        Отправляет транзакцию, переводя нативную валюту на указанный адрес. Параметры кошелька и ключа
+        могут быть предоставлены либо через объект user_wallet класса UserWallet, либо через прямое указание
+        private_key.
+
+        Args:
+            to_address (str): Адрес кошелька получателя.
+            value (int): Количество нативной валюты в wei для отправки.
+            user_wallet (UserWallet, optional): Объект кошелька пользователя для отправки.
+            private_key (str, optional): Приватный ключ кошелька отправителя.
+
+        Returns:
+            Union[str, bool]: Хэш транзакции в случае успеха или False в случае ошибки.
+
+        Raises:
+            ValueError: Если не предоставлены ни user_wallet, ни private_key.
+        """
+        if user_wallet:
+            wallet_address = user_wallet.public_key
+            private_key = user_wallet.private_key
+        elif not private_key:
+            raise ValueError("Необходимо предоставить user_wallet или private_key.")
+
+        if not self.web3.isConnected():
+            print("Не удалось подключиться к сети Ethereum.")
+            return False
+
+        transaction = {
+            'to': to_address,
+            'value': value,
+            'gas': 21000,
+            'gasPrice': self.web3.eth.gasPrice,
+            'nonce': self.web3.eth.getTransactionCount(wallet_address),
+            'chainId': self.chain_id,
+        }
 
         signed_transaction = self.web3.eth.account.sign_transaction(transaction, private_key)
 
