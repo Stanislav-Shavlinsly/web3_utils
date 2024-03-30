@@ -33,7 +33,6 @@ print(new_wallet.__dict__)
 # Отправка нативной валюты
 public_key = '0xA9a78a9840C0972D3620855D692735f86eFE97Db'
 private_key = '0xefebf0aa55ba97ab0694ea541b1cf64079dc0d01d5d348ed0b9c32a6e6d0f3f5'
-
 user = UserWallet(public_key, private_key)
 
 web3_test = Web3Utils(ethereum_sepolia_config)
