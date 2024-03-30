@@ -1,11 +1,9 @@
 import requests
 import json
-from web3 import Web3, exceptions
+from web3 import Web3
 from web3.contract import Contract
 from web3.middleware import geth_poa_middleware
 from web3.exceptions import MismatchedABI, TransactionNotFound
-
-from config import ethereum_holesky_config, ethereum_goerli_config, ethereum_sepolia_config, bsc_testnet_config
 
 
 class Web3Utils:
