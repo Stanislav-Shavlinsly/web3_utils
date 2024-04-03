@@ -9,7 +9,6 @@ from config import ethereum_holesky_config, ethereum_goerli_config, ethereum_sep
 
 contract_config = ethereum_sepolia_config
 
-
 PROVIDER = contract_config.provider
 URL_ABI = contract_config.url_abi
 CHAIN_ID = contract_config.chain_id
