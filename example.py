@@ -1,11 +1,6 @@
-from config import *
-from classWeb3Utils import *
-from userClass import *
-import time
-
 web3_test = Web3Utils(shibarium_puppy_config,
                       contract_address='0x845e4145F7de2822d16FE233Ecd0181c61f1d65F',
-                      path_abi='exemple_abi.txt') # Путь до файла с аби
+                      path_abi='exemple_ERC20_abi.txt') # Путь до файла с аби
 print(web3_test.read_method('totalSupply'))
 
 

@@ -51,7 +51,7 @@ bsc_testnet_config = ContractConfig(
 
 ```python
 # Импорт модуля и конфигурации контракта
-from ethereum_utils import *
+from Web3_Utils.ethereum_utils import *
 
 # Создание объекта контракта
 contract_obj = new_contract('0x864Ce253cd3b6a1e923302F1805aB1DFa1647bF4')
