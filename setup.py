@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='web3_utils',
-    version='0.1.2',
+    version='0.1.3',
     author='Stanislav Shavlinsky',
     author_email='stanislave777@gmail.com',
     description='Набор утилит для работы с Web3',
