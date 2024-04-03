@@ -75,3 +75,10 @@ polyhon_mumbai_config = ContractConfig(
     chain_id=80001,
     url_tx_explorer='https://mumbai.polygonscan.com/tx/'
 )
+
+ethereum_config = ContractConfig(
+    provider='https://eth.llamarpc.com',
+    url_abi='https://api.etherscan.io/api?module=contract&action=getabi&address=',
+    chain_id=1,
+    url_tx_explorer=''
+)

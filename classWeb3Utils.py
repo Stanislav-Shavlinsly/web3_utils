@@ -63,6 +63,7 @@ class Web3Utils:
         else:
             abi = self.abi
 
+        self.abi = abi
         return self.web3.eth.contract(address=contract_address, abi=abi)
 
     def read_method(self, method_name: str, *args) -> str | int | bool:
