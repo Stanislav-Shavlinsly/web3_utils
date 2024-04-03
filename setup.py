@@ -15,7 +15,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
-    python_requires='==3.10',
+    python_requires='>=3.10',
     install_requires=[
         'attrs==23.2.0',
         'base58==2.1.1',
