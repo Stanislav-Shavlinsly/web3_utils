@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from Web3_Utils.classWeb3Utils import Web3Utils
-
+import json
 
 class TestResult(Enum):
     TOTAL_FAILURE = auto()
@@ -111,3 +111,46 @@ class TestRun:
         print("\nИтоговая статистика:")
         for key, value in self.result.items():
             print(f"{key.replace('_', ' ').capitalize()}: {value}")
+
+    def save_json(self):
+        """
+        Сохраняет отчет о тестировании в формате JSON, используя английские ключи.
+        """
+        report_data = {
+            "testRunDescription": self.description,
+            "dateTime": self.date_time.strftime('%Y-%m-%d %H:%M:%S'),
+            "testCases": []
+        }
+
+        for case in self.test_cases:
+            case_data = {
+                "testCaseName": case.name,
+                "description": case.description,
+                "steps": [],
+                "transactions": [],
+                "result": case.result.name if case.result else "Undefined"
+            }
+
+            for step in case.steps:
+                step_data = {
+                    "stepName": step.name,
+                    "description": step.description,
+                    "expectedResult": step.expected_result,
+                    "actualResult": step.actual_result,
+                    "result": step.result.name if step.result else "Undefined"
+                }
+                case_data["steps"].append(step_data)
+
+            for tx in case.transactions:
+                tx_data = {
+                    "transactionDescription": tx['description'],
+                    "url": tx['url']
+                }
+                case_data["transactions"].append(tx_data)
+
+            report_data["testCases"].append(case_data)
+
+        report_data["summary"] = self.result
+
+        with open("test_report.json", "w", encoding="utf-8") as json_file:
+            json.dump(report_data, json_file, ensure_ascii=False, indent=4)

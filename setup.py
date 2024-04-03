@@ -2,9 +2,9 @@ from setuptools import setup, find_packages
 
 setup(
     name='web3_utils',
-    version='0.1.1',
-    author='Ваше Имя',
-    author_email='your.email@example.com',
+    version='0.1.2',
+    author='Stanislav Shavlinsky',
+    author_email='stanislave777@gmail.com',
     description='Набор утилит для работы с Web3',
     long_description=open('README.md', encoding='utf-8').read(),
     long_description_content_type='text/markdown',
@@ -15,7 +15,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.6',
+    python_requires='==3.10',
     install_requires=[
         'attrs==23.2.0',
         'base58==2.1.1',
