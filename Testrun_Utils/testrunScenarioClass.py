@@ -1,4 +1,4 @@
-from reportClass import TestRun
+from Testrun_Utils import TestRun
 from Web3_Utils import UserWallet
 
 class TestrunScenario:
