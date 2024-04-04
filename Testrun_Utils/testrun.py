@@ -165,6 +165,8 @@ def test_burn(testrun: TestRun):
     # Если начальный баланс меньше 1 токена, выполняем минтинг на 1 токен
     if before_balance_owner < amount:
         tx_hash_mint = web3_obj.send_transaction('mint', owner.public_key, amount, user_wallet=owner)
+        testcase.add_transaction(tx_hash=tx_hash_mint, description="Увелечение баланса Owner",
+                                 web3_utils=web3_obj)
         web3_obj.wait_transaction_receipt(tx_hash_mint)
 
     # Запрашиваем обновленный баланс owner и общее предложение токенов
@@ -209,8 +211,10 @@ def test_transfer_from(testrun: TestRun):
     # Проверка и обновление баланса owner, если это необходимо
     before_balance_owner = web3_obj.read_method('balanceOf', owner.public_key)
     if before_balance_owner < amount:
-        web3_obj.send_transaction('mint', owner.public_key, amount, user_wallet=owner)
-        web3_obj.wait_transaction_receipt()
+        tx_hash_mint = web3_obj.send_transaction('mint', owner.public_key, amount, user_wallet=owner)
+        testcase.add_transaction(tx_hash=tx_hash_mint, description="Увелечение баланса Owner",
+                                 web3_utils=web3_obj)
+        web3_obj.wait_transaction_receipt(tx_hash_mint)
 
     # Выполнение transferFrom от owner к user2 через user1
     tx_hash_transfer_from = web3_obj.send_transaction('transferFrom', owner.public_key, user2.public_key, amount,
