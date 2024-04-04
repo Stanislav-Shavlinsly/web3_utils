@@ -19,6 +19,7 @@ class TestrunScenario:
         self.user2 = UserWallet.generate_user_from_private_key(data["wallets"]["user2_private_key"], "user2")
         self.testrun_report = TestRun('Тестирование смартконтракта')
         self.run_cases = data['cases']
+        self.id = data['id']
 
     def test_mint(self):
         testcase = self.testrun_report.add_test_case('Mint', 'Тестирование функции mint токена')
