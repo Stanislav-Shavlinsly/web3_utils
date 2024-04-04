@@ -14,9 +14,9 @@ class TestrunScenario:
 
     def __init__(self, web3_utils, data):
         self.web3_obj = web3_utils
-        self.owner = UserWallet.generate_user_from_private_key(data["wallets"]["owner_key"], "owner")
-        self.user1 = UserWallet.generate_user_from_private_key(data["wallets"]["user1_key"], "user1")
-        self.user2 = UserWallet.generate_user_from_private_key(data["wallets"]["user2_key"], "user2")
+        self.owner = UserWallet.generate_user_from_private_key(data["wallets"]["owner_private_key"], "owner")
+        self.user1 = UserWallet.generate_user_from_private_key(data["wallets"]["user1_private_key"], "user1")
+        self.user2 = UserWallet.generate_user_from_private_key(data["wallets"]["user2_private_key"], "user2")
         self.testrun_report = TestRun('Тестирование смартконтракта')
         self.run_cases = data['cases']
 
