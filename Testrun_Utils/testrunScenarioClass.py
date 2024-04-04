@@ -276,3 +276,6 @@ class TestrunScenario:
                     print(f"Error: Method {test_method['key']} not found in TestunScenario class.")
             else:
                 print(f"Skipping: {test_method['name']}")
+
+        self.testrun_report.view_results()
+        return self.testrun_report.save_json()

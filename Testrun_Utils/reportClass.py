@@ -2,6 +2,7 @@ from enum import Enum, auto
 from Web3_Utils.classWeb3Utils import Web3Utils
 import json
 
+
 class TestResult(Enum):
     TOTAL_FAILURE = auto()
     PARTIAL_FAILURE = auto()
@@ -154,3 +155,5 @@ class TestRun:
 
         with open("test_report.json", "w", encoding="utf-8") as json_file:
             json.dump(report_data, json_file, ensure_ascii=False, indent=4)
+
+        return report_data
