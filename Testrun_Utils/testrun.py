@@ -164,8 +164,8 @@ def test_burn(testrun: TestRun):
 
     # Если начальный баланс меньше 1 токена, выполняем минтинг на 1 токен
     if before_balance_owner < amount:
-        web3_obj.send_transaction('mint', owner.public_key, amount, user_wallet=owner)
-        web3_obj.wait_transaction_receipt()
+        tx_hash_mint = web3_obj.send_transaction('mint', owner.public_key, amount, user_wallet=owner)
+        web3_obj.wait_transaction_receipt(tx_hash_mint)
 
     # Запрашиваем обновленный баланс owner и общее предложение токенов
     before_balance_owner = web3_obj.read_method('balanceOf', owner.public_key)
@@ -285,5 +285,7 @@ def testrun_token():
     testrun_report.calculate_results()
     testrun_report.view_results()
 
+    testrun_report.save_json()
 
-# testrun_token()
+
+testrun_token()
