@@ -242,6 +242,7 @@ def test_burn_from(testrun: TestRun):
     testcase = testrun.add_test_case('BurnFrom', 'Тестирование функции burnFrom контракта токенов')
 
     amount = 1 * 10 ** web3_obj.read_method('decimals')
+    before_totalSupply = web3_obj.read_method('totalSupply')
 
     # Проверка и обновление allowance, если необходимо
     current_allowance = web3_obj.read_method('allowance', owner.public_key, user1.public_key)

@@ -1,5 +1,6 @@
 import os
 from eth_keys import keys
+from eth_account import Account
 
 class UserWallet:
     """
@@ -40,3 +41,19 @@ class UserWallet:
         public_key = private_key.public_key
         address = public_key.to_checksum_address()
         return cls(str(address), str(private_key), username)
+
+    @classmethod
+    def generate_user_from_private_key(cls, private_key, username=None):
+        """
+        Генерирует объект класса UserWallet на основе приватного ключа.
+
+        Args:
+            private_key (str): Приватный ключ пользователя в hex формате.
+            username: (str, optional): Имя пользователя, которое будет ассоциировано с новым кошельком.
+
+        Returns:
+            UserWallet: Объект класса UserWallet с соответствующим публичным адресом и приватным ключом.
+        """
+        account = Account.from_key(private_key)
+        public_address = account.address
+        return cls(str(public_address), str(private_key), username)
