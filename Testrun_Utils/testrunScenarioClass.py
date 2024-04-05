@@ -163,6 +163,8 @@ class TestrunScenario:
             tx_hash_mint = self.web3_obj.send_transaction('mint', self.owner.public_key, amount, user_wallet=self.owner)
             testcase.add_transaction(tx_hash=tx_hash_mint, description="Увеличение баланса Owner", web3_utils=self.web3_obj)
             self.web3_obj.wait_transaction_receipt(tx_hash_mint)
+            before_balance_owner = self.web3_obj.read_method('balanceOf', self.owner.public_key)
+
 
         # Запрашиваем обновленный баланс owner и общее предложение токенов
         before_balance_owner = self.web3_obj.read_method('balanceOf', self.owner.public_key)
@@ -194,18 +196,22 @@ class TestrunScenario:
         amount = 1 * 10 ** self.web3_obj.read_method('decimals')
 
         # Проверка и обновление allowance, если это необходимо
-        current_allowance = self.web3_obj.read_method('allowance', self.owner.public_key, self.user1.public_key)
-        if current_allowance < amount:
+        before_allowance = self.web3_obj.read_method('allowance', self.owner.public_key, self.user1.public_key)
+        if before_allowance < amount:
             tx_hash_approve = self.web3_obj.send_transaction('approve', self.user1.public_key, amount, user_wallet=self.owner)
             testcase.add_transaction(tx_hash=tx_hash_approve, description="Установка разрешения для User1 на передачу токенов", web3_utils=self.web3_obj)
             self.web3_obj.wait_transaction_receipt(tx_hash_approve)
+            before_allowance = self.web3_obj.read_method('allowance', self.owner.public_key, self.user1.public_key)
 
         # Проверка и обновление баланса owner, если это необходимо
         before_balance_owner = self.web3_obj.read_method('balanceOf', self.owner.public_key)
+        before_balance_user1 = self.web3_obj.read_method('balanceOf', self.user1.public_key)
+        before_balance_user2 = self.web3_obj.read_method('balanceOf', self.user2.public_key)
         if before_balance_owner < amount:
             tx_hash_mint = self.web3_obj.send_transaction('mint', self.owner.public_key, amount, user_wallet=self.owner)
             testcase.add_transaction(tx_hash=tx_hash_mint, description="Увеличение баланса Owner для теста", web3_utils=self.web3_obj)
             self.web3_obj.wait_transaction_receipt(tx_hash_mint)
+            before_balance_owner = self.web3_obj.read_method('balanceOf', self.owner.public_key)
 
         # Выполнение transferFrom от owner к user2 через user1
         tx_hash_transfer_from = self.web3_obj.send_transaction('transferFrom', self.owner.public_key, self.user2.public_key, amount, user_wallet=self.user1)
@@ -214,13 +220,21 @@ class TestrunScenario:
 
         # Проверка изменений балансов после перевода
         after_balance_owner = self.web3_obj.read_method('balanceOf', self.owner.public_key)
+        after_balance_user1 = self.web3_obj.read_method('balanceOf', self.user1.public_key)
         after_balance_user2 = self.web3_obj.read_method('balanceOf', self.user2.public_key)
+        after_allowance = self.web3_obj.read_method('allowance', self.owner.public_key, self.user1.public_key)
 
         step = testcase.add_step(name='Проверка уменьшения баланса owner', description='Баланс Owner должен уменьшиться на amount')
         step.set_results(before_balance_owner - amount, after_balance_owner)
 
         step = testcase.add_step(name='Проверка увеличения баланса User2', description='Баланс User2 должен увеличиться на amount')
-        step.set_results(0 + amount, after_balance_user2)  # Предполагаем, что до теста у User2 не было токенов
+        step.set_results(before_balance_user2 + amount, after_balance_user2)
+
+        step = testcase.add_step(name='Проверка что баланс User1 не изменился', description='Баланс User1 должен остаться на том же уровне')
+        step.set_results(before_balance_user1, after_balance_user1)
+
+        step = testcase.add_step(name='Проверка уменьшения аллованса User1', description='Аллованс User1 должен уменьшиться на amount')
+        step.set_results(before_allowance - amount, after_allowance)
 
         # Устанавливаем итоговый результат тест-кейса
         testcase.set_result()
@@ -229,14 +243,15 @@ class TestrunScenario:
         testcase = self.testrun_report.add_test_case('BurnFrom', 'Тестирование функции burnFrom контракта токенов')
 
         amount = 1 * 10 ** self.web3_obj.read_method('decimals')
-        before_totalSupply = self.web3_obj.read_method('totalSupply')
 
         # Проверка и обновление allowance, если это необходимо
-        current_allowance = self.web3_obj.read_method('allowance', self.owner.public_key, self.user1.public_key)
-        if current_allowance < amount:
+        before_allowance = self.web3_obj.read_method('allowance', self.owner.public_key, self.user1.public_key)
+        if before_allowance < amount:
             tx_hash_approve = self.web3_obj.send_transaction('approve', self.user1.public_key, amount, user_wallet=self.owner)
             testcase.add_transaction(tx_hash=tx_hash_approve, description="Установка разрешения для User1 на сжигание", web3_utils=self.web3_obj)
             self.web3_obj.wait_transaction_receipt(tx_hash_approve)
+            before_allowance = self.web3_obj.read_method('allowance', self.owner.public_key, self.user1.public_key)
+
 
         # Проверка и обновление баланса owner, если это необходимо
         before_balance_owner = self.web3_obj.read_method('balanceOf', self.owner.public_key)
@@ -244,6 +259,9 @@ class TestrunScenario:
             tx_hash_mint = self.web3_obj.send_transaction('mint', self.owner.public_key, amount, user_wallet=self.owner)
             testcase.add_transaction(tx_hash=tx_hash_mint, description="Минтинг токенов владельцу для теста сжигания", web3_utils=self.web3_obj)
             self.web3_obj.wait_transaction_receipt(tx_hash_mint)
+            before_balance_owner = self.web3_obj.read_method('balanceOf', self.owner.public_key)
+
+        before_totalSupply = self.web3_obj.read_method('totalSupply')
 
         # Сжигание токенов с баланса owner через user1
         tx_hash_burn_from = self.web3_obj.send_transaction('burnFrom', self.owner.public_key, amount, user_wallet=self.user1)
@@ -253,6 +271,7 @@ class TestrunScenario:
         # Проверка изменения баланса owner и общего предложения токенов
         after_balance_owner = self.web3_obj.read_method('balanceOf', self.owner.public_key)
         after_totalSupply = self.web3_obj.read_method('totalSupply')
+        after_allowance = self.web3_obj.read_method('allowance', self.owner.public_key, self.user1.public_key)
 
         step = testcase.add_step(name='Проверка уменьшения баланса owner', description='Баланс Owner должен уменьшиться на amount')
         step.set_results(before_balance_owner - amount, after_balance_owner)
@@ -260,6 +279,8 @@ class TestrunScenario:
         step = testcase.add_step(name='Проверка уменьшения общего предложения токенов', description='Общее предложение токенов должно уменьшиться на amount')
         step.set_results(before_totalSupply - amount, after_totalSupply)
 
+        step = testcase.add_step(name='Проверка уменьшения аллованса User1', description='Аллованс User1 должен уменьшиться на amount')
+        step.set_results(before_allowance - amount, after_allowance)
         # Установка итогового результата тест-кейса
         testcase.set_result()
 
@@ -278,5 +299,6 @@ class TestrunScenario:
             else:
                 print(f"Skipping: {test_method['name']}")
 
+        self.testrun_report.calculate_results()
         self.testrun_report.view_results()
         return self.testrun_report.save_json()
