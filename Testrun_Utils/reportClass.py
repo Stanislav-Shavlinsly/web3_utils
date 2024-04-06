@@ -44,9 +44,9 @@ class TestCase:
         return teststep
 
     def add_transaction(self, tx_hash: str, description: str, web3_utils: Web3Utils):
-        # Используем web3_utils для получения URL транзакции
         tx_url = web3_utils.give_url_tx(tx_hash)
-        self.transactions.append({"url": tx_url, "description": description})
+        tx_status = web3_utils.get_transaction_status(tx_hash)
+        self.transactions.append({"url": tx_url, "description": description, 'tx_status': tx_status})
 
     def set_result(self):
         count = 0

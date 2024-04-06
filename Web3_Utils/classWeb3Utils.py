@@ -116,12 +116,13 @@ class Web3Utils:
         transaction = {
             'to': self.contract_obj.address,
             'value': value,
-            'gas': 400000,
+            'gas': 4000000,
             'gasPrice': self.web3.eth.gasPrice,
             'nonce': self.web3.eth.getTransactionCount(wallet_address),
-            'chainId': self.chain_id,
+            'chainId': self.chain_id
         }
-        transaction['data'] = method.buildTransaction({'from': wallet_address})['data']
+
+        transaction['data'] = method.buildTransaction({'from': wallet_address, 'gas': 285000})['data']
 
         signed_transaction = self.web3.eth.account.sign_transaction(transaction, private_key)
 
@@ -287,7 +288,7 @@ class Web3Utils:
             print(f"Произошла ошибка при получении информации о транзакции: {e}")
             return None
 
-    def give_url_tx(self, tx_hash: str) -> str:
+    def give_url_tx(self, tx_hash: str) -> bool | None:
         """
         Генерирует полный URL для отслеживания транзакции в блокчейн-эксплорере на основе переданного хеша транзакции.
 
@@ -298,3 +299,32 @@ class Web3Utils:
             str: Полный URL-адрес для просмотра транзакции в блокчейн-эксплорере.
         """
         return self.url_tx_explorer + tx_hash if self.url_tx_explorer else None
+
+    def get_transaction_status(self, tx_hash: str) -> bool | None:
+        """
+        Получает статус транзакции по ее хешу. В случае отсутствия транзакции,
+        функция ожидает ее подтверждения с использованием метода wait_transaction_receipt.
+
+        Args:
+            tx_hash (str): Хеш транзакции для проверки статуса.
+
+        Returns:
+            bool | None: True, если транзакция успешно выполнена, False, если
+            транзакция не выполнена, или None, если возникла ошибка при попытке получить статус.
+
+        Raises:
+            TransactionNotFound: Если транзакция не найдена в блокчейне после ожидания.
+            Exception: Если произошла ошибка при получении информации о транзакции.
+        """
+        try:
+            receipt = self.web3.eth.getTransactionReceipt(tx_hash)
+            # Статус 1 означает успешное выполнение, 0 - наличие ошибки.
+            return receipt.status == 1 if receipt is not None else None
+        except TransactionNotFound:
+            print("Ожидание появления транзакции...")
+            self.wait_transaction_receipt(tx_hash)
+            receipt = self.web3.eth.getTransactionReceipt(tx_hash)
+            return receipt.status == 1 if receipt is not None else None
+        except Exception as e:
+            print(f"Произошла ошибка при получении информации о статусе транзакции: {e}")
+            return None
