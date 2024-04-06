@@ -109,6 +109,7 @@ class TestRun:
             for tx in case.transactions:
                 print(f"    Транзакция: {tx['description']}")
                 print(f"    URL: {tx['url']}")
+                print(f"    tx_status: {tx['tx_status']}")
         print("\nИтоговая статистика:")
         for key, value in self.result.items():
             print(f"{key.replace('_', ' ').capitalize()}: {value}")
@@ -145,7 +146,8 @@ class TestRun:
             for tx in case.transactions:
                 tx_data = {
                     "transactionDescription": tx['description'],
-                    "url": tx['url']
+                    "url": tx['url'],
+                    "tx_status": tx['tx_status']
                 }
                 case_data["transactions"].append(tx_data)
 
