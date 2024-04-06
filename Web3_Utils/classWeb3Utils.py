@@ -317,14 +317,11 @@ class Web3Utils:
             Exception: Если произошла ошибка при получении информации о транзакции.
         """
         try:
-            receipt = self.web3.eth.getTransactionReceipt(tx_hash)
-            # Статус 1 означает успешное выполнение, 0 - наличие ошибки.
-            return receipt.status == 1 if receipt is not None else None
+            return bool(self.web3.eth.getTransactionReceipt(tx_hash).status)
         except TransactionNotFound:
             print("Ожидание появления транзакции...")
             self.wait_transaction_receipt(tx_hash)
-            receipt = self.web3.eth.getTransactionReceipt(tx_hash)
-            return receipt.status == 1 if receipt is not None else None
+            return bool(self.web3.eth.getTransactionReceipt(tx_hash).status)
         except Exception as e:
             print(f"Произошла ошибка при получении информации о статусе транзакции: {e}")
             return None
