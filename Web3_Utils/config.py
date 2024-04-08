@@ -1,3 +1,6 @@
+import requests
+
+
 class ContractConfig:
     """
     Класс для хранения конфигурационных данных контракта.
@@ -27,6 +30,38 @@ class ContractConfig:
         self.chain_id = chain_id
         self.url_tx_explorer = url_tx_explorer
         self.name = name
+
+    @staticmethod
+    def check_provider(provider: str) -> tuple[bool, int] | tuple[bool, None]:
+        """
+        Проверяет доступность провайдера Ethereum и возвращает его идентификатор сети.
+
+        Этот метод выполняет POST-запрос к указанному провайдеру с целью получения его идентификатора сети (chain ID).
+        Возвращает кортеж, содержащий статус доступности провайдера и его идентификатор сети, если доступен.
+
+        Args:
+            provider (str): URL-адрес провайдера для проверки доступности и получения идентификатора сети.
+
+        Returns:
+            tuple[bool, int | None]: Кортеж, где первый элемент - булево значение, указывающее на доступность провайдера.
+                                     Второй элемент - целочисленный идентификатор сети, если провайдер доступен и идентификатор сети
+                                     успешно получен, в противном случае - None.
+        """
+        data = '{"jsonrpc":"2.0","method":"net_version","params":[],"id":1}'
+
+        try:
+            response = requests.post(url=provider, data=data)
+            if response.status_code == 200:
+                try:
+                    chain_id = int(response.json()['result'])
+                    return True, chain_id
+                except:
+                    return True, None
+            else:
+                return False, None
+        except:
+            return False, None
+
 
 ethereum_holesky_config = ContractConfig(
     name='Ethereum Holesky',
