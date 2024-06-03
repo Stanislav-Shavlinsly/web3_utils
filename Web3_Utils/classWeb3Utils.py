@@ -62,7 +62,8 @@ class Web3Utils:
             abi = json.loads(response)['result']
         else:
             abi = self.abi
-
+        if type(abi) is str:
+            abi = json.loads(abi)
         self.abi = abi
         return self.web3.eth.contract(address=contract_address, abi=abi)
 
@@ -81,13 +82,14 @@ class Web3Utils:
         return method.call()
 
     def send_transaction(self, method_name: str,
-                         *args, user_wallet=None, wallet_address=None, private_key=None, value=0) -> str | bool:
+                         *args, user_wallet=None, wallet_address=None, private_key=None, value=0, gas=400000, gasPriceMultiplier=1) -> str | bool:
         """
         Отправляет транзакцию для вызова метода контракта, используя кошелек и приватный ключ. Параметры кошелька и ключа
         могут быть предоставлены либо через объект user_wallet класса UserWallet, либо через прямое указание
         wallet_address и private_key.
 
         Args:
+            gas (int): Количество газа для транзакции
             value (int): Количество нативной валюты в транзакции
             method_name (str): Название метода контракта для вызова.
             *args: Аргументы метода.
@@ -116,8 +118,8 @@ class Web3Utils:
         transaction = {
             'to': self.contract_obj.address,
             'value': value,
-            'gas': 4000000,
-            'gasPrice': self.web3.eth.gasPrice,
+            'gas': gas,
+            'gasPrice': int(self.web3.eth.gasPrice * gasPriceMultiplier),
             'nonce': self.web3.eth.getTransactionCount(wallet_address),
             'chainId': self.chain_id
         }
@@ -125,6 +127,52 @@ class Web3Utils:
         transaction['data'] = method.buildTransaction({'from': wallet_address, 'gas': 285000})['data']
 
         signed_transaction = self.web3.eth.account.sign_transaction(transaction, private_key)
+
+        try:
+            tx_hash = self.web3.eth.sendRawTransaction(signed_transaction.rawTransaction)
+            print(f"Транзакция успешно отправлена. Хэш транзакции: {tx_hash.hex()}")
+            return tx_hash.hex()
+        except Exception as e:
+            print(f"Ошибка при отправке транзакции: {e}")
+            return False
+    def send_transaction2(self, data_trans, user_wallet=None, wallet_address=None, private_key=None) -> str | bool:
+        """
+        Отправляет транзакцию для вызова метода контракта, используя кошелек и приватный ключ. Параметры кошелька и ключа
+        могут быть предоставлены либо через объект user_wallet класса UserWallet, либо через прямое указание
+        wallet_address и private_key.
+
+        Args:
+            gas (int): Количество газа для транзакции
+            value (int): Количество нативной валюты в транзакции
+            method_name (str): Название метода контракта для вызова.
+            *args: Аргументы метода.
+            user_wallet (UserWallet, optional): Объект кошелька пользователя.
+            wallet_address (str, optional): Адрес кошелька отправителя.
+            private_key (str, optional): Приватный ключ кошелька отправителя.
+
+        Returns:
+            Union[str, bool]: Хэш транзакции в случае успеха или False в случае ошибки.
+
+        Raises:
+            ValueError: Если не предоставлены ни user_wallet, ни wallet_address с private_key.
+        """
+        if user_wallet:
+            wallet_address = user_wallet.public_key
+            private_key = user_wallet.private_key
+        elif not wallet_address or not private_key:
+            raise ValueError("Необходимо предоставить user_wallet или wallet_address и private_key.")
+
+        data = {
+          "value": 0,
+          "nonce": 1,
+          "chainId": 157,
+            "gas": 4000000000,
+            'gasPrice': self.web3.eth.gasPrice,
+          "from": "0xBC68A15DEec05e79A6C0D831C2265687D64302bc",
+          "to": "0x5486B21977203C3b4Da633a2729E62902B122fcB",
+          "data": f"{data_trans}"
+        }
+        signed_transaction = self.web3.eth.account.sign_transaction(data, private_key)
 
         try:
             tx_hash = self.web3.eth.sendRawTransaction(signed_transaction.rawTransaction)
@@ -192,6 +240,53 @@ class Web3Utils:
             TransactionReceipt: Получает квитанцию транзакции после ее подтверждения.
         """
         return self.web3.eth.waitForTransactionReceipt(tx_hash)
+
+    def list_methods(self) -> dict:
+        """
+        Возвращает словарь с методами контракта, разделёнными на категории чтения и записи.
+
+        Этот метод позволяет легко идентифицировать, какие методы контракта предназначены для чтения данных
+        и какие предназначены для выполнения транзакций (запись). Это особенно полезно для интерфейсов,
+        которые требуют разделения методов на те, что могут изменять состояние блокчейна, и те, что не изменяют его.
+
+        Returns:
+            dict: Словарь с ключами 'read_methods' и 'write_methods', каждый из которых содержит список строк.
+                  Каждая строка в списках представляет название метода контракта соответствующей категории.
+        """
+        read_methods = []
+        write_methods = []
+        for method in self.abi:
+            if method["type"] == "function":
+                if method['stateMutability'] == 'view':
+                    inputs_method = []
+                    outputs_method = []
+
+                    for inputs in method["inputs"]:
+                        inputs_method.append({
+                            "name": inputs["name"],
+                            "type": inputs["type"]
+                        })
+                    for outputs in method["outputs"]:
+                        outputs_method.append({
+                            "name": outputs["name"],
+                            "type": outputs["type"]
+                        })
+                    read_methods.append({
+                        'name': method['name'],
+                        'inputs': inputs_method,
+                        "outputs": outputs_method
+                    })
+                elif method['stateMutability'] == 'nonpayable' or method['stateMutability'] == 'payable':
+                    write_methods.append({
+                        'name': method['name'],
+                        'inputs': method['inputs'],
+                        "payable": False if method['stateMutability'] == 'nonpayable' else True,
+                    })
+        list_methods = {
+            'read_methods': read_methods,
+            'write_methods': write_methods
+        }
+        return list_methods
 
     def list_events(self):
         """

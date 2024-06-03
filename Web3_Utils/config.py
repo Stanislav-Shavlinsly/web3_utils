@@ -13,6 +13,7 @@ class ContractConfig:
         url_tx_explorer (str, optional): URL-адрес проводника транзакций (explorer), используемого для отслеживания транзакций.
                                          Может быть None, если отслеживание транзакций не требуется.
     """
+    all_configs = []
 
     def __init__(self, provider, chain_id, url_abi=None, url_tx_explorer=None, name=None):
         """
@@ -30,6 +31,8 @@ class ContractConfig:
         self.chain_id = chain_id
         self.url_tx_explorer = url_tx_explorer
         self.name = name
+
+        self.all_configs.append(self)
 
     @staticmethod
     def check_provider(provider: str) -> tuple[bool, int] | tuple[bool, None]:
@@ -124,4 +127,11 @@ ethereum_config = ContractConfig(
     url_abi='https://api.etherscan.io/api?module=contract&action=getabi&address=',
     chain_id=1,
     url_tx_explorer='https://etherscan.io/tx/'
+)
+
+okx_testnet = ContractConfig(
+    name='OKX Testnet',
+    provider='https://xlayertestrpc.okx.com',
+    chain_id=195,
+    url_tx_explorer='https://www.okx.com/web3/explorer/xlayer-test/tx/'
 )
