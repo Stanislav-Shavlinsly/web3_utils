@@ -29,11 +29,12 @@ class Web3Utils:
         path_abi (str, optional): Путь к локальному файлу с ABI контракта.
     """
 
-    def __init__(self, contract_config, contract_address=None, abi=None, path_abi=None):
+    def __init__(self, contract_config, contract_address=None, abi=None, path_abi=None, proxy_address=None):
         self.provider = contract_config.provider
         self.url_abi = contract_config.url_abi
         self.abi = abi
         self.path_abi = path_abi
+        self.proxy_address = proxy_address
         self.chain_id = contract_config.chain_id
         self.web3 = Web3(Web3.HTTPProvider(self.provider))
         self.web3.middleware_onion.inject(geth_poa_middleware, layer=0)
@@ -56,10 +57,17 @@ class Web3Utils:
             with open(self.path_abi, 'r') as abi_file:
                 abi = json.load(abi_file)
         elif self.url_abi:
-            url = self.url_abi + contract_address
+            if self.proxy_address:
+                url = self.url_abi + self.proxy_address
+            else:
+                url = self.url_abi + contract_address
             headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(url, headers=headers).text
-            abi = json.loads(response)['result']
+            while True:
+                response = requests.get(url, headers=headers).text
+                abi = json.loads(response)['result']
+                if abi != 'Max rate limit reached, please use API Key for higher rate limit':
+                    break
+
         else:
             abi = self.abi
         if type(abi) is str:
@@ -82,7 +90,7 @@ class Web3Utils:
         return method.call()
 
     def send_transaction(self, method_name: str,
-                         *args, user_wallet=None, wallet_address=None, private_key=None, value=0, gas=400000, gasPriceMultiplier=1) -> str | bool:
+                         *args, user_wallet=None, wallet_address=None, private_key=None, value=0, gas=1000000, gasPriceMultiplier=1) -> str | bool:
         """
         Отправляет транзакцию для вызова метода контракта, используя кошелек и приватный ключ. Параметры кошелька и ключа
         могут быть предоставлены либо через объект user_wallet класса UserWallet, либо через прямое указание
@@ -135,6 +143,7 @@ class Web3Utils:
         except Exception as e:
             print(f"Ошибка при отправке транзакции: {e}")
             return False
+
     def send_transaction2(self, data_trans, user_wallet=None, wallet_address=None, private_key=None) -> str | bool:
         """
         Отправляет транзакцию для вызова метода контракта, используя кошелек и приватный ключ. Параметры кошелька и ключа
@@ -180,6 +189,60 @@ class Web3Utils:
             return tx_hash.hex()
         except Exception as e:
             print(f"Ошибка при отправке транзакции: {e}")
+            return False
+
+    def deploy_contract(self, abi: str, bytecode: str, constructor_args: list = None, user_wallet=None,
+                        wallet_address=None, private_key=None) -> str:
+        """
+        Деплоит новый смарт-контракт в блокчейн.
+
+        Args:
+            abi (str): ABI контракта.
+            bytecode (str): Байт-код контракта.
+            constructor_args (list, optional): Аргументы конструктора контракта.
+            user_wallet (UserWallet, optional): Объект кошелька пользователя.
+            wallet_address (str, optional): Адрес кошелька отправителя.
+            private_key (str, optional): Приватный ключ кошелька отправителя.
+
+        Returns:
+            str: Хэш транзакции деплоя контракта.
+        """
+        if user_wallet:
+            wallet_address = user_wallet.public_key
+            private_key = user_wallet.private_key
+        elif not wallet_address or not private_key:
+            raise ValueError("Необходимо предоставить user_wallet или wallet_address и private_key.")
+
+        if not self.web3.isConnected():
+            print("Не удалось подключиться к сети Ethereum.")
+            return False
+
+        Contract = self.web3.eth.contract(abi=abi, bytecode=bytecode)
+        if constructor_args:
+            transaction = Contract.constructor(*constructor_args).buildTransaction({
+                'from': wallet_address,
+                'nonce': self.web3.eth.getTransactionCount(wallet_address),
+                'gas': 4000000,
+                'gasPrice': self.web3.eth.gasPrice,
+                'chainId': self.chain_id
+            })
+        else:
+            transaction = Contract.constructor().buildTransaction({
+                'from': wallet_address,
+                'nonce': self.web3.eth.getTransactionCount(wallet_address),
+                'gas': 4000000,
+                'gasPrice': self.web3.eth.gasPrice,
+                'chainId': self.chain_id
+            })
+
+        signed_transaction = self.web3.eth.account.sign_transaction(transaction, private_key)
+
+        try:
+            tx_hash = self.web3.eth.sendRawTransaction(signed_transaction.rawTransaction)
+            print(f"Контракт успешно деплоен. Хэш транзакции: {tx_hash.hex()}")
+            return tx_hash.hex()
+        except Exception as e:
+            print(f"Ошибка при деплое контракта: {e}")
             return False
 
     def send_native_currency(self, to_address: str, value: int, user_wallet=None, private_key=None) -> str | bool:
@@ -419,4 +482,26 @@ class Web3Utils:
             return bool(self.web3.eth.getTransactionReceipt(tx_hash).status)
         except Exception as e:
             print(f"Произошла ошибка при получении информации о статусе транзакции: {e}")
+            return None
+
+    def get_contract_address(self, tx_hash: str) -> str:
+        """
+        Извлекает адрес задеплоенного контракта из хеша транзакции.
+
+        Args:
+            tx_hash (str): Хэш транзакции деплоя контракта.
+
+        Returns:
+            str: Адрес задеплоенного контракта.
+        """
+        try:
+            # Получаем квитанцию транзакции
+            receipt = self.wait_transaction_receipt(tx_hash)
+
+            # Извлекаем адрес контракта из квитанции
+            contract_address = receipt['contractAddress']
+            print(f"Адрес задеплоенного контракта: {contract_address}")
+            return contract_address
+        except Exception as e:
+            print(f"Ошибка при получении адреса контракта: {e}")
             return None
