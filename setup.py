@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='web3_utils',
-    version='0.2.12',
+    version='0.2.13',
     author='Stanislav Shavlinsky',
     author_email='stanislave777@gmail.com',
     description='Набор утилит для работы с Web3',
@@ -15,7 +15,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.11',
+    python_requires='>=3.10',
     install_requires=[
         'attrs==23.2.0',
         'base58==2.1.1',
