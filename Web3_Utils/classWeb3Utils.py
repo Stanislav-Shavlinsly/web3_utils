@@ -408,7 +408,7 @@ class Web3Utils:
 
         return decoded_logs
 
-    def get_block_info(self, block_number: int) -> dict | None:
+    def get_block_info(self, block_number: int, full_transactions: bool=False) -> dict | None:
         """
         Получает и возвращает информацию о блоке по его номеру.
 
@@ -419,7 +419,7 @@ class Web3Utils:
             dict | None: Информация о блоке или None в случае ошибки.
         """
         try:
-            block = self.web3.eth.getBlock(block_number)
+            block = self.web3.eth.getBlock(block_number, full_transactions)
             return block
         except Exception as e:
             print("Произошла ошибка:", e)

@@ -135,3 +135,10 @@ okx_testnet = ContractConfig(
     chain_id=195,
     url_tx_explorer='https://www.okx.com/web3/explorer/xlayer-test/tx/'
 )
+
+haven1_devnet = ContractConfig(
+    name='Haven1 Devnet',
+    provider='https://rpc.staging.haven1.org',
+    chain_id=8110,
+    url_tx_explorer='https://explorer.staging.haven1.org/tx/'
+)
