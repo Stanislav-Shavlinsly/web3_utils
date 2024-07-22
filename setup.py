@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='web3_utils',
-    version='0.2.18',
+    version='0.2.19',
     author='Stanislav Shavlinsky',
     author_email='stanislave777@gmail.com',
     description='Набор утилит для работы с Web3',
@@ -22,7 +22,7 @@ setup(
         'bitarray==2.9.2',
         'certifi==2024.2.2',
         'charset-normalizer==3.3.2',
-        'colorama==0.4.6,'
+        'colorama==0.4.6',
         'cytoolz==0.12.3',
         'eth-abi==2.2.0',
         'eth-account==0.5.9',
