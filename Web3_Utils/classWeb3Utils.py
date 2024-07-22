@@ -500,7 +500,6 @@ class Web3Utils:
 
             # Извлекаем адрес контракта из квитанции
             contract_address = receipt['contractAddress']
-            print(f"Адрес задеплоенного контракта: {contract_address}")
             return contract_address
         except Exception as e:
             print(f"Ошибка при получении адреса контракта: {e}")
