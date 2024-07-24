@@ -123,8 +123,7 @@ polygon_mumbai_config = ContractConfig(
 
 ethereum_config = ContractConfig(
     name='Ethereum Mainnet',
-    provider='https://eth.llamarpc.com',
-    url_abi='https://api.etherscan.io/api?module=contract&action=getabi&address=',
+    provider='https://mainnet.infura.io/v3/0d6408dc0e754ca884f3b60a54de3228',    url_abi='https://api.etherscan.io/api?module=contract&action=getabi&address=',
     chain_id=1,
     url_tx_explorer='https://etherscan.io/tx/'
 )
