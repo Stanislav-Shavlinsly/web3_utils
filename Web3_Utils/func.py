@@ -2,6 +2,7 @@ import os
 import logging
 import json
 from colorama import Fore, Style, init
+from functools import wraps
 
 init(autoreset=True)
 
@@ -319,6 +320,20 @@ def detailed_log_results(method_name, result, abi_path):
             logging.error(
                 f"Method {method_name} returned a single value, but expected multiple values: {len(output_params)}")
 
+def suppress_logging(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        logging.disable(logging.CRITICAL)
+        try:
+            return func(*args, **kwargs)
+        finally:
+            logging.disable(logging.NOTSET)
+    return wrapper
+
+
+@suppress_logging
+def silent_read(web3_obj, method_name, *args):
+    return read(web3_obj, method_name, *args)
 
 def read(web3_obj, method_name, *args):
     """
