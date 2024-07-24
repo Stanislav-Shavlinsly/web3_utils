@@ -142,3 +142,10 @@ haven1_devnet = ContractConfig(
     chain_id=8110,
     url_tx_explorer='https://explorer.staging.haven1.org/tx/'
 )
+
+haustnetwork_devnet = ContractConfig(
+    name='haustnetwork-devnet',
+    provider='https://haustnetwork-devnet-rpc.eu-north-2.gateway.fm',
+    chain_id=2079172751,
+    url_tx_explorer='https://haustnetwork-devnet-blockscout.eu-north-2.gateway.fm:443/'
+)
